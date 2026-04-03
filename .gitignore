@@ -1,0 +1,20 @@
+# model files
+*.pkl
+
+# datasets
+*.csv
+
+# notebooks
+*.ipynb
+
+# output logs
+*.txt
+
+# python cache
+__pycache__/
+
+# checkpoint folders
+.ipynb_checkpoints/
+
+# env files
+.env
