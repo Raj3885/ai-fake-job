@@ -1,20 +1,29 @@
-# model files
-*.pkl
-
 # datasets
 *.csv
+*.xlsx
+*.json
 
-# notebooks
-*.ipynb
-
-# output logs
-*.txt
+# models
+*.pkl
+*.joblib
 
 # python cache
 __pycache__/
+*.pyc
 
-# checkpoint folders
+# notebook checkpoints
 .ipynb_checkpoints/
 
-# env files
-.env
+# virtual environment
+venv/
+env/
+
+# large outputs
+*.txt
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+*.ipynb
