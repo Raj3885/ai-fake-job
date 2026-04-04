@@ -8,6 +8,14 @@ import os
 from contextlib import contextmanager
 import numpy as np
 
+import nltk
+from nltk.corpus import stopwords
+try:
+    STOPWORDS = set(stopwords.words('english'))
+except Exception:
+    nltk.download('stopwords', quiet=True)
+    STOPWORDS = set(stopwords.words('english'))
+
 # Adjust path to import from parent directory where ml_pipeline is
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -178,6 +186,74 @@ def predict(req: InferenceRequest):
         if payment_phrase > 0:
             explanation += "Mentions payment/fees which is highly suspicious. "
             
+    # --- NEW EXPLAINABILITY FIELDS ---
+    
+    # 1. risk_category
+    if risk_score <= 30:
+        risk_category = "Low Risk"
+    elif risk_score <= 60:
+        risk_category = "Medium Risk"
+    else:
+        risk_category = "High Risk"
+        
+    # 2. matched_keywords
+    raw_matched_keywords = []
+    # Extract keywords from the cleaned text processing
+    cleaned_input = str(clean_text.iloc[0]) if hasattr(clean_text, "iloc") else str(clean_text[0])
+    keywords_to_check = job_keywords if req.type == "job" else review_keywords_list
+    
+    # Use simple substring matches for keywords in the cleaned text
+    for kw in keywords_to_check:
+        if kw in cleaned_input:
+            raw_matched_keywords.append(kw)
+            
+    # Add payment phrases if matched in original text
+    payment_phrases = [
+        "registration fee", "processing fee", "payment required", "refundable fee",
+        "no experience required", "earn money easily", "weekly income", "daily payment",
+        "work from home no experience", "limited seats", "guaranteed income",
+        "activation fee", "verification fee", "training fee payment", "deposit required"
+    ]
+    user_input_lower = user_input.lower()
+    for pw in payment_phrases:
+        if pw in user_input_lower:
+            raw_matched_keywords.append(pw)
+            
+    raw_matched_keywords = list(set(raw_matched_keywords))
+    
+    # Filter keywords
+    matched_keywords = []
+    for kw in raw_matched_keywords:
+        kw = kw.strip()
+        # remove words shorter than 4 characters
+        if len(kw) < 4:
+            continue
+        # remove common english stopwords
+        if kw in STOPWORDS:
+            continue
+        # remove tokens containing only domain fragments like "com", "org", "net"
+        if kw in ["com", "org", "net", "www", "http", "https"]:
+            continue
+        # only include keywords that contain alphabetic characters
+        if not any(c.isalpha() for c in kw):
+            continue
+            
+        matched_keywords.append(kw)
+        
+    # limit output to top 10 keywords
+    matched_keywords = matched_keywords[:10]
+    
+    # 3. fraud_probability_explanation
+    if label == "Fake" and kw_count > 0:
+        fraud_probability_explanation = "Flagged as fraudulent. Suspicious promotional phrases and keywords were detected."
+    elif label == "Fake":
+        fraud_probability_explanation = "Flagged as fraudulent. Text structure and sentiment indicate potentially artificial or deceptive content."
+    else:
+        if kw_count > 0:
+            fraud_probability_explanation = "Text shows natural language patterns. Some tracked keywords exist, but overall context is benign."
+        else:
+            fraud_probability_explanation = "Text shows natural language patterns with no suspicious markers."
+
     return {
         "prediction": label,
         "confidence": class_prob,
@@ -188,5 +264,8 @@ def predict(req: InferenceRequest):
         "keyword_count": kw_count,
         "keyword_risk_level": keyword_risk_level,
         "top_features": top_features,
-        "explanation": explanation.strip()
+        "explanation": explanation.strip(),
+        "risk_category": risk_category,
+        "matched_keywords": matched_keywords,
+        "fraud_probability_explanation": fraud_probability_explanation
     }

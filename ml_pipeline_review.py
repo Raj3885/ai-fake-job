@@ -42,7 +42,7 @@ def tfidf_agent(clean_text_series):
 
 # AGENT 3 - KEYWORD FRAUD AGENT
 def keyword_agent(clean_text_series, auto_fraud_keywords):
-    print("[Agent 3] Extracting Auto Keyword Fraud Features...")
+    print("[Agent 3] Extracting Auto Keyword Fraud Features with Linguistic Signals...")
     lemmatizer = WordNetLemmatizer()
     stop_words = set(stopwords.words('english'))
     def clean_kw(kw):
@@ -51,9 +51,40 @@ def keyword_agent(clean_text_series, auto_fraud_keywords):
 
     cleaned_auto_kws = set([clean_kw(kw) for kw in auto_fraud_keywords if clean_kw(kw)])
     
+    promotional_phrases = [
+        "must buy", "highly recommended", "five stars", "best ever",
+        "perfect product", "excellent quality", "top quality",
+        "100% satisfied", "amazing product", "great product"
+    ]
+    cleaned_promotional = set([clean_kw(p) for p in promotional_phrases if clean_kw(p)])
+    
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+    analyzer = SentimentIntensityAnalyzer()
+    
     features = []
     for text in clean_text_series:
+        # Base automated extraction count
         count = sum(text.count(kw) for kw in cleaned_auto_kws)
+        
+        # Signal 1: Repetition Score
+        tokens = text.split()
+        repetition_score = 0
+        for i in range(1, len(tokens)):
+            if tokens[i] == tokens[i-1]:
+                repetition_score += 1
+        count += repetition_score
+        
+        # Signal 2: Promotional Phrase Score
+        for phrase in cleaned_promotional:
+            if phrase in text:
+                count += 1
+                
+        # Signal 3: Short Positive Review Flag
+        if len(tokens) < 6:
+            score = analyzer.polarity_scores(text)
+            if score['compound'] > 0.05:
+                count += 1
+                
         presence = 1 if count > 0 else 0
         features.append([count, presence])
         
