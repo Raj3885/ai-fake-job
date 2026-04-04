@@ -3,27 +3,27 @@
 *.xlsx
 *.json
 
-# models
+# model files
 *.pkl
 *.joblib
+
+# logs & outputs
+*.txt
+*.log
 
 # python cache
 __pycache__/
 *.pyc
 
-# notebook checkpoints
-.ipynb_checkpoints/
-
-# virtual environment
+# virtual environments
+.venv/
 venv/
 env/
 
-# large outputs
-*.txt
-*.log
+# notebooks
+*.ipynb
+.ipynb_checkpoints/
 
 # OS files
 .DS_Store
 Thumbs.db
-
-*.ipynb
